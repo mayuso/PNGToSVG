@@ -16,10 +16,12 @@ Using [Python 3.7.4](https://www.python.org/downloads/release/python-374/):
 
 To run:
 
-    >pip install 
-	>python pngtosvg.py
+    > pip install 
+    > python pngtosvg.py
 	
 To create an executable:
 
-    >pip install cx_Freeze
-	>python createExecutable.py
+    > pip install cx_Freeze
+    > python createExecutable.py
+
+(Last tested using [Python 3.7.4](https://www.python.org/downloads/release/python-374/), it should work fine with any 3.7.X or newer versions)
