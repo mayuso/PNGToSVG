@@ -16,7 +16,6 @@ Using [Python 3.7.4](https://www.python.org/downloads/release/python-374/):
 
 To run:
 
-    > pip install 
     > python pngtosvg.py
 	
 To create an executable:
