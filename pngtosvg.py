@@ -6,7 +6,6 @@ import io
 from optparse import OptionParser
 from PIL import Image
 
-
 def add_tuple(a, b):
 	return tuple(map(operator.add, a, b))
 
@@ -38,7 +37,7 @@ def svg_header(width, height):
 """ % (width, height)
 
 def rgba_image_to_svg_pixels(im):
-	s = StringIO()
+	s = io.StringIO()
 	s.write(svg_header(*im.size))
 
 	width, height = im.size
