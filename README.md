@@ -18,7 +18,7 @@ Run:
 	
 Create an executable:
 
-    > pip install cx_Freeze
-    > python createExecutable.py
-
-(Last tested using [Python 3.7.4](https://www.python.org/downloads/release/python-374/))
+    > pip3 install pyinstaller
+    > pyinstaller --onefile PNGToSVG.spec
+	
+(Last tested using [Python 3.9.0](https://www.python.org/downloads/release/python-390/))
