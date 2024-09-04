@@ -12,13 +12,29 @@ To use PNGToSVG you only need to download, extract the content of the zip, copy 
 
 ### Download and use code
 
+### Python
+
 Run:
 
+    > cd python
     > python pngtosvg.py
-	
+
 Create an executable:
 
     > pip3 install pyinstaller
     > pyinstaller --onefile pngtosvg.py
-	
+
 (Last tested using [Python 3.9.0](https://www.python.org/downloads/release/python-390/))
+
+### Rust
+
+Run:
+
+    > cd rust
+    > cargo run path/to/dir/containing/images
+    OR
+    > cargo run  # Defaults to the current directory if no path is specified
+
+Create an executable:
+
+    > cargo build --release
