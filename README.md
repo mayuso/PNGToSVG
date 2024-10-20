@@ -24,7 +24,7 @@ Create an executable:
     > pip3 install pyinstaller
     > pyinstaller --onefile pngtosvg.py
 
-(Last tested using [Python 3.9.0](https://www.python.org/downloads/release/python-390/))
+(Last tested using [Python 3.12.5](https://www.python.org/downloads/release/python-390/))
 
 ### Rust
 
