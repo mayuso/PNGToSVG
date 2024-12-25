@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::{env, fs};
+use rayon::prelude::*;
 
 type Point = (i32, i32);
 type Edge = (Point, Point);
@@ -22,24 +23,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("Processing PNG files in: {}", dir_path.display());
+    
 
-    for entry in fs::read_dir(dir_path)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png") {
-            let input_path = path.to_str().unwrap();
-            let output_path = path.with_extension("svg").to_str().unwrap().to_string();
+    fs::read_dir(dir_path)?
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>()
+        .par_iter()
+        .for_each(|entry| {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png") {
+                let input_path = path.to_str().unwrap();
+                let output_path = path.with_extension("svg").to_str().unwrap().to_string();
 
-            println!("Converting {} to {}", input_path, output_path);
+                println!("Converting {} to {}", input_path, output_path);
 
-            let svg = png_to_svg(input_path)?;
-
-            let mut file = File::create(&output_path)?;
-            file.write_all(svg.as_bytes())?;
-
-            println!("Conversion complete: {} -> {}", input_path, output_path);
-        }
-    }
+                if let Ok(svg) = png_to_svg(input_path){
+                    if let Ok(mut file) = File::create(&output_path){
+                        let _ = file.write_all(svg.as_bytes());
+                        println!("Conversion complete: {} -> {}", input_path, output_path);
+                    }
+                }
+            }
+        });
     Ok(())
 }
 
