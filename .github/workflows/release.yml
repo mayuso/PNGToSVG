@@ -7,7 +7,7 @@ on:
 
 permissions:
   contents: write
-
+  
 jobs:
   build-and-release:
     name: Build on ${{ matrix.os }}
@@ -18,37 +18,42 @@ jobs:
           - os: ubuntu-latest
             asset_name: pngtosvg-linux
             binary_name: pngtosvg
+            archive_name: pngtosvg-linux.tar.gz
           - os: windows-latest
             asset_name: pngtosvg-windows.exe
             binary_name: pngtosvg.exe
+            archive_name: pngtosvg-windows.zip
           - os: macos-latest
             asset_name: pngtosvg-macos
             binary_name: pngtosvg
+            archive_name: pngtosvg-macos.tar.gz
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Install the Rust toolchain
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # Build the project
       - name: Build project
         shell: bash
         run: |
           cargo build --release
 
-      # Rename the binary to include the OS name (e.g., pngtosvg -> pngtosvg-linux)
-      - name: Prepare Artifacts
-        shell: bash
+      - name: Prepare Artifacts (Unix)
+        if: matrix.os != 'windows-latest'
         run: |
-          mv target/release/${{ matrix.binary_name }} ${{ matrix.asset_name }}
+          cd target/release
+          tar -czf ../../${{ matrix.archive_name }} ${{ matrix.binary_name }}
 
-      # Upload the binary to the release page
+      - name: Prepare Artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd target/release
+          7z a ../../${{ matrix.archive_name }} ${{ matrix.binary_name }}
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: ${{ matrix.asset_name }}
-          fail_on_unmatched_files: true
+          files: ${{ matrix.archive_name }}
