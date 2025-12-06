@@ -43,8 +43,7 @@ jobs:
       - name: Prepare Artifacts
         shell: bash
         run: |
-          cd target/release
-          mv ${{ matrix.binary_name }} ../../../${{ matrix.asset_name }}
+          mv target/release/${{ matrix.binary_name }} ${{ matrix.asset_name }}
 
       # Upload the binary to the release page
       - name: Upload Release Asset
@@ -52,3 +51,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: ${{ matrix.asset_name }}
+          fail_on_unmatched_files: true
