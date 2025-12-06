@@ -1,55 +1,71 @@
 use image::{Rgba, RgbaImage};
+use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
-use rayon::prelude::*;
 
 type Point = (i32, i32);
 type Edge = (Point, Point);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
-    let dir_path = if args.len() > 1 {
+    
+    // Default to "." if no arg provided, otherwise use arg[1]
+    let input_path = if args.len() > 1 {
         Path::new(&args[1])
     } else {
         Path::new(".")
     };
 
-    if !dir_path.is_dir() {
-        eprintln!("Error: The provided path is not a directory.");
+    if !input_path.exists() {
+        eprintln!("Error: Path does not exist: {}", input_path.display());
         std::process::exit(1);
     }
 
-    println!("Processing PNG files in: {}", dir_path.display());
-    
+    let files_to_process: Vec<PathBuf> = if input_path.is_file() {
+        // Single file
+        if input_path.extension().and_then(|s| s.to_str()) != Some("png") {
+            eprintln!("Error: The file '{:?}' is not a PNG image.", input_path.file_name().unwrap());
+            std::process::exit(1);
+        }
+        vec![input_path.to_path_buf()]
+    } else if input_path.is_dir() {
+        // Directory (Process all PNGs inside)
+        println!("Processing directory: {}", input_path.display());
+        fs::read_dir(input_path)?
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png")) // Pre-filter PNGs here
+            .collect()
+    } else {
+        Vec::new()
+    };
 
-    fs::read_dir(dir_path)?
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>()
-        .par_iter()
-        .for_each(|entry| {
-            let path = entry.path();
-            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png") {
-                let input_path = path.to_str().unwrap();
-                let output_path = path.with_extension("svg").to_str().unwrap().to_string();
+    files_to_process.par_iter().for_each(|path| {
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png") {
+            let output_path = path.with_extension("svg");
+            
+            println!("Converting {:?} to {:?}", path, output_path);
 
-                println!("Converting {} to {}", input_path, output_path);
-
-                if let Ok(svg) = png_to_svg(input_path){
-                    if let Ok(mut file) = File::create(&output_path){
+            match png_to_svg(path) {
+                Ok(svg) => {
+                    if let Ok(mut file) = File::create(&output_path) {
                         let _ = file.write_all(svg.as_bytes());
-                        println!("Conversion complete: {} -> {}", input_path, output_path);
+                        println!("Success: {:?}", output_path);
                     }
                 }
+                Err(e) => eprintln!("Failed to convert {:?}: {}", path, e),
             }
-        });
+        }
+    });
+
     Ok(())
 }
 
-fn png_to_svg(filename: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let img = image::open(filename)?.to_rgba8();
+fn png_to_svg(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let img = image::open(path)?.to_rgba8();
     Ok(rgba_image_to_svg_contiguous(&img))
 }
 
@@ -109,7 +125,6 @@ fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
 
             color_pixel_lists.entry(*rgba).or_default().push(piece);
         }
-        println!("Converting image: {}%", x * 100 / img.width());
     }
 
     let edges = [
