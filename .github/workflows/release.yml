@@ -3,7 +3,7 @@ name: Release Binaries
 on:
   push:
     tags:
-      - '[0-9]*' # This captures when there's a new tag starting with a number (AKA a new version)
+      - 'v*' # This captures when there's a new tag starting with a number (AKA a new version)
 
 permissions:
   contents: write
