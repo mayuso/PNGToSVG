@@ -37,14 +37,13 @@ jobs:
       - name: Build project
         shell: bash
         run: |
-          cd rust
           cargo build --release
 
       # Rename the binary to include the OS name (e.g., pngtosvg -> pngtosvg-linux)
       - name: Prepare Artifacts
         shell: bash
         run: |
-          cd rust/target/release
+          cd target/release
           mv ${{ matrix.binary_name }} ../../../${{ matrix.asset_name }}
 
       # Upload the binary to the release page
