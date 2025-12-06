@@ -1,63 +1,67 @@
+use clap::Parser;
 use image::{Rgba, RgbaImage};
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::{fs, process};
+
+// Define the arguments struct
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// Input file or directory
+    #[arg(default_value = ".")]
+    input: PathBuf,
+}
 
 type Point = (i32, i32);
 type Edge = (Point, Point);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    
-    // Default to "." if no arg provided, otherwise use arg[1]
-    let input_path = if args.len() > 1 {
-        Path::new(&args[1])
-    } else {
-        Path::new(".")
-    };
+    // Parse arguments using clap
+    let args = Cli::parse();
+    let input_path = &args.input;
 
     if !input_path.exists() {
         eprintln!("Error: Path does not exist: {}", input_path.display());
-        std::process::exit(1);
+        process::exit(1);
     }
 
+    // Collect list of files to process
     let files_to_process: Vec<PathBuf> = if input_path.is_file() {
         // Single file
         if input_path.extension().and_then(|s| s.to_str()) != Some("png") {
-            eprintln!("Error: The file '{:?}' is not a PNG image.", input_path.file_name().unwrap());
-            std::process::exit(1);
+            eprintln!("Error: The provided file is not a PNG.");
+            process::exit(1);
         }
         vec![input_path.to_path_buf()]
     } else if input_path.is_dir() {
-        // Directory (Process all PNGs inside)
+        // Directory    
         println!("Processing directory: {}", input_path.display());
         fs::read_dir(input_path)?
             .filter_map(Result::ok)
             .map(|entry| entry.path())
-            .filter(|path| path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png")) // Pre-filter PNGs here
+            .filter(|path| path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png"))
             .collect()
     } else {
         Vec::new()
     };
 
     files_to_process.par_iter().for_each(|path| {
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png") {
-            let output_path = path.with_extension("svg");
-            
-            println!("Converting {:?} to {:?}", path, output_path);
+        let output_path = path.with_extension("svg");
+        
+        println!("Converting {:?}...", path.file_name().unwrap_or_default());
 
-            match png_to_svg(path) {
-                Ok(svg) => {
-                    if let Ok(mut file) = File::create(&output_path) {
-                        let _ = file.write_all(svg.as_bytes());
-                        println!("Success: {:?}", output_path);
-                    }
+        match png_to_svg(path) {
+            Ok(svg) => {
+                if let Ok(mut file) = File::create(&output_path) {
+                    let _ = file.write_all(svg.as_bytes());
+                    println!("Success: {:?}", output_path.file_name().unwrap_or_default());
                 }
-                Err(e) => eprintln!("Failed to convert {:?}: {}", path, e),
             }
+            Err(e) => eprintln!("Failed to convert {:?}: {}", path, e),
         }
     });
 
