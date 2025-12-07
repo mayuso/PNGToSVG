@@ -142,6 +142,8 @@ fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
 
     for (rgba, pieces) in &color_pixel_lists {
         for piece_pixel_list in pieces {
+            // Convert the Vector to a HashSet for O(1) fast lookups.
+            let piece_set: HashSet<&Point> = piece_pixel_list.iter().collect();
             let mut edge_set = HashSet::new();
             for &coord in piece_pixel_list {
                 for &(offset, (start_offset, end_offset)) in &edges {
@@ -149,7 +151,7 @@ fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                     let start = (coord.0 + start_offset.0, coord.1 + start_offset.1);
                     let end = (coord.0 + end_offset.0, coord.1 + end_offset.1);
                     let edge = (start, end);
-                    if !piece_pixel_list.contains(&neighbour) {
+                    if !piece_set.contains(&neighbour) {
                         edge_set.insert(edge);
                     }
                 }
