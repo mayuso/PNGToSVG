@@ -2,6 +2,20 @@
 name = "pngtosvg"
 version = "0.5.0"
 edition = "2021"
+description = "A CLI tool and library to convert PNG images into SVG vectors."
+license = "MIT"
+repository = "https://github.com/mayuso/PNGToSVG"
+readme = "README.md"
+keywords = ["png", "svg", "image", "converter", "vector"]
+categories = ["command-line-utilities", "multimedia::images"]
+
+[lib]
+name = "pngtosvg"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pngtosvg"
+path = "src/main.rs"
 
 [dependencies]
 image = "0.25.2"
