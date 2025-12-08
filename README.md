@@ -2,6 +2,8 @@
 
 **PNGToSVG** is a high-performance tool written in Rust that converts PNG raster images into SVG vectors.
 
+[![Crates.io](https://img.shields.io/crates/v/pngtosvg.svg)](https://crates.io/crates/pngtosvg)
+
 > **Note:** This project has been rewritten in **Rust** for speed and portability. 
 > If you are looking for the original Python prototype, please check the [`/legacy_python`](./legacy_python) directory.
 
