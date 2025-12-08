@@ -4,15 +4,32 @@ use std::collections::{HashMap, HashSet, VecDeque};
 type Point = (i32, i32);
 type Edge = (Point, Point);
 
-/// This is a convenience wrapper for standard Rust usage.
+/// Reads a file from `path`, converts it to an RGBA image, and then
+/// converts it to an SVG string using the `rgba_image_to_svg_contiguous` function.
+///
+/// # Arguments
+///
+/// * `path` - A path to the image file to convert.
+///
+/// # Returns
+///
+/// * `Result<String, Box<dyn std::error::Error>>` - The SVG string on success, or an error on failure.
 pub fn convert_file_to_svg(path: &std::path::Path) -> Result<String, Box<dyn std::error::Error>> {
     let img = image::open(path)?.to_rgba8();
     Ok(rgba_image_to_svg_contiguous(&img))
 }
 
-/// Converts an image buffer to an SVG string.
+/// This function processes the image to find contiguous regions of the same color
+/// and generates SVG paths for them.
+///
+/// # Arguments
+///
+/// * `img` - A reference to an `RgbaImage` to convert.
+///
+/// # Returns
+///
+/// * `String` - A string containing the SVG representation of the image.
 pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
-    // If needed: Use this function for WASM or in-memory processing.
     let adjacent = [(1, 0), (0, 1), (-1, 0), (0, -1)];
     let mut visited = vec![vec![false; img.height() as usize]; img.width() as usize];
     let mut color_pixel_lists: HashMap<Rgba<u8>, Vec<Vec<Point>>> = HashMap::new();
@@ -117,6 +134,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
     svg
 }
 
+/// Generates the standard SVG header.
 fn svg_header(width: u32, height: u32) -> String {
     format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -129,6 +147,10 @@ fn svg_header(width: u32, height: u32) -> String {
     )
 }
 
+/// Joins individual edges into a continuous path of points.
+/// 
+/// This is a helper for the vectorization process that traces the outline
+/// of a shape from a set of edges.
 fn joined_edges(assorted_edges: &HashSet<Edge>, keep_every_point: bool) -> Vec<Vec<Point>> {
     let mut pieces = Vec::new();
     let mut assorted_edges = assorted_edges.clone();
