@@ -64,6 +64,53 @@ pngtosvg .
 > **Note for Linux/macOS users:**
 > If you haven't added the binary to your `PATH`, you will need to prefix the command with `./` (e.g., `./pngtosvg image.png`) while inside the directory containing the executable.
 
+### 3. Library Usage (For calling from Rust code)
+
+Add the dependency to your project: 
+
+```bash
+cargo add pngtosvg
+```
+
+#### Conversion from file
+
+Use this to convert your file directly from a path:
+
+```rust
+use pngtosvg::convert_file_to_svg;
+use std::path::Path;
+
+fn main() {
+    let input_path = Path::new("image.png");
+    match convert_file_to_svg(input_path) {
+        Ok(svg_content) => {
+            println!("Generated SVG:\n{}", svg_content);
+            // You can write svg_content to a file here
+        }
+        Err(e) => eprintln!("Error converting file: {}", e),
+    }
+}
+```
+
+#### In-Memory Conversion
+
+Use this if you already have an `image::RgbaImage` (e.g., from generated content or WASM):
+
+```rust
+use pngtosvg::rgba_image_to_svg_contiguous;
+use image::RgbaImage;
+
+fn main() {
+    // Assume you have an RgbaImage from somewhere
+    let img = RgbaImage::new(100, 100); 
+    
+    // Convert directly to SVG string
+    let svg_content = rgba_image_to_svg_contiguous(&img);
+    
+    println!("{}", svg_content);
+}
+```
+
 ---
 
 ## Legacy Python Version
