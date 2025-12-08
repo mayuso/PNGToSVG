@@ -71,3 +71,10 @@ To use the legacy version:
 1. Navigate to the `legacy_python` folder.
 2. Install dependencies: `pip install -r requirements.txt`
 3. Run: `python main.py`
+
+## Other
+
+A dry run verifies everything compiles and packs correctly (I do this before publishing the package)
+```bash
+cargo publish --dry-run
+```
