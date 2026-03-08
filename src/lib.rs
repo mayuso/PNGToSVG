@@ -1,5 +1,4 @@
 use image::{Rgba, RgbaImage};
-use std::collections::{HashMap, HashSet, VecDeque};
 
 type Point = (i32, i32);
 type Edge = (Point, Point);
@@ -30,103 +29,171 @@ pub fn convert_file_to_svg(path: &std::path::Path) -> Result<String, Box<dyn std
 ///
 /// * `String` - A string containing the SVG representation of the image.
 pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
-    let adjacent = [(1, 0), (0, 1), (-1, 0), (0, -1)];
-    let mut visited = vec![vec![false; img.height() as usize]; img.width() as usize];
-    let mut color_pixel_lists: HashMap<Rgba<u8>, Vec<Vec<Point>>> = HashMap::new();
+    let width = img.width();
+    let height = img.height();
+    
+    let raw = img.as_raw();
+    let get_rgba = |x: u32, y: u32| -> [u8; 4] {
+        let i = ((y * width + x) * 4) as usize;
+        [raw[i], raw[i+1], raw[i+2], raw[i+3]]
+    };
 
-    for x in 0..img.width() {
-        for y in 0..img.height() {
-            if visited[x as usize][y as usize] {
-                continue;
-            }
-            let rgba = img.get_pixel(x, y);
-            // Skip fully transparent pixels
-            if rgba[3] == 0 {
-                continue;
-            }
-            let mut piece = Vec::new();
-            let mut queue = VecDeque::new();
-            queue.push_back((x as i32, y as i32));
-            visited[x as usize][y as usize] = true;
+    let mut visited = vec![false; (width * height) as usize];
+    
+    let mut svg = String::with_capacity((width * height * 5) as usize);
+    svg.push_str(&svg_header(width, height));
 
-            while let Some(here) = queue.pop_front() {
-                for offset in &adjacent {
-                    let neighbour = (here.0 + offset.0, here.1 + offset.1);
-                    if neighbour.0 < 0
-                        || neighbour.0 >= img.width() as i32
-                        || neighbour.1 < 0
-                        || neighbour.1 >= img.height() as i32
-                    {
-                        continue;
-                    }
-                    if visited[neighbour.0 as usize][neighbour.1 as usize] {
-                        continue;
-                    }
-                    let neighbour_rgba = img.get_pixel(neighbour.0 as u32, neighbour.1 as u32);
-                    if neighbour_rgba != rgba {
-                        continue;
-                    }
-                    queue.push_back(neighbour);
-                    visited[neighbour.0 as usize][neighbour.1 as usize] = true;
-                }
-                piece.push(here);
-            }
-
-            color_pixel_lists.entry(*rgba).or_default().push(piece);
-        }
-    }
-
-    let edges = [
+    let edges_offsets = [
         ((-1, 0), ((0, 0), (0, 1))),
         ((0, 1), ((0, 1), (1, 1))),
         ((1, 0), ((1, 1), (1, 0))),
         ((0, -1), ((1, 0), (0, 0))),
     ];
 
-    let mut color_edge_lists: HashMap<Rgba<u8>, Vec<HashSet<Edge>>> = HashMap::new();
+    use std::fmt::Write;
 
-    for (rgba, pieces) in &color_pixel_lists {
-        for piece_pixel_list in pieces {
-            let piece_set: HashSet<&Point> = piece_pixel_list.iter().collect();
-            let mut edge_set = HashSet::new();
-            for &coord in piece_pixel_list {
-                for &(offset, (start_offset, end_offset)) in &edges {
-                    let neighbour = (coord.0 + offset.0, coord.1 + offset.1);
-                    let start = (coord.0 + start_offset.0, coord.1 + start_offset.1);
-                    let end = (coord.0 + end_offset.0, coord.1 + end_offset.1);
-                    let edge = (start, end);
-                    if !piece_set.contains(&neighbour) {
-                        edge_set.insert(edge);
+    let mut queue = Vec::new();
+    let mut current_edges = Vec::new();
+    let mut used = Vec::new();
+    let mut piece = Vec::new();
+
+    for y in 0..height {
+        for x in 0..width {
+            let idx = (y * width + x) as usize;
+            if visited[idx] {
+                continue;
+            }
+            
+            let rgba = get_rgba(x, y);
+            if rgba[3] == 0 {
+                visited[idx] = true;
+                continue;
+            }
+
+            queue.clear();
+            queue.push((x as i32, y as i32));
+            visited[idx] = true;
+
+            current_edges.clear();
+
+            while let Some(here) = queue.pop() {
+                for &(offset, (start_offset, end_offset)) in &edges_offsets {
+                    let nx = here.0 + offset.0;
+                    let ny = here.1 + offset.1;
+                    
+                    let is_boundary;
+                    
+                    if nx < 0 || nx >= width as i32 || ny < 0 || ny >= height as i32 {
+                        is_boundary = true;
+                    } else {
+                        let nx_u = nx as u32;
+                        let ny_u = ny as u32;
+                        
+                        if get_rgba(nx_u, ny_u) != rgba {
+                            is_boundary = true;
+                        } else {
+                            is_boundary = false;
+                            let n_idx = (ny_u * width + nx_u) as usize;
+                            if !visited[n_idx] {
+                                visited[n_idx] = true;
+                                queue.push((nx, ny));
+                            }
+                        }
+                    }
+
+                    if is_boundary {
+                        let start = (here.0 + start_offset.0, here.1 + start_offset.1);
+                        let end = (here.0 + end_offset.0, here.1 + end_offset.1);
+                        current_edges.push((start, end));
                     }
                 }
             }
-            color_edge_lists.entry(*rgba).or_default().push(edge_set);
-        }
-    }
 
-    let mut svg = String::new();
-    svg.push_str(&svg_header(img.width(), img.height()));
+            // Immediately convert current_edges to shapes and push to SVG
+            if current_edges.is_empty() {
+                continue;
+            }
 
-    for (color, pieces) in &color_edge_lists {
-        for edge_set in pieces {
-            let shape = joined_edges(edge_set, false);
-            svg.push_str(r#" <path d=""#);
-            for sub_shape in shape {
-                if let Some(&start) = sub_shape.first() {
-                    svg.push_str(&format!(" M {},{}", start.0, start.1));
-                    for &point in &sub_shape[1..] {
-                        svg.push_str(&format!(" L {},{}", point.0, point.1));
+            current_edges.sort_unstable();
+            
+            used.clear();
+            used.resize(current_edges.len(), false);
+            
+            let opacity = rgba[3] as f32 / 255.0;
+            let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+            let mut has_started_path = false;
+
+            for i in 0..current_edges.len() {
+                if used[i] {
+                    continue;
+                }
+                used[i] = true;
+                let first_edge = current_edges[i];
+                
+                piece.clear();
+                piece.push(first_edge.0);
+                piece.push(first_edge.1);
+
+                loop {
+                    let last_point = *piece.last().unwrap();
+                    let mut found = false;
+
+                    for &direction in &directions {
+                        let next_point = (last_point.0 + direction.0, last_point.1 + direction.1);
+                        let next_edge = (last_point, next_point);
+
+                        if let Ok(idx) = current_edges.binary_search(&next_edge) {
+                            if !used[idx] {
+                                used[idx] = true;
+                                
+                                if piece.len() >= 2 {
+                                    let prev_direction = (
+                                        piece[piece.len() - 1].0 - piece[piece.len() - 2].0,
+                                        piece[piece.len() - 1].1 - piece[piece.len() - 2].1,
+                                    );
+                                    if prev_direction == direction {
+                                        piece.pop();
+                                    }
+                                }
+                                piece.push(next_point);
+                                found = true;
+                                break;
+                            }
+                        }
                     }
-                    svg.push_str(" Z");
+
+                    if !found || piece.first() == piece.last() {
+                        break;
+                    }
+                }
+
+                if piece.first() == piece.last() {
+                    piece.pop();
+                }
+
+                if !piece.is_empty() {
+                    if !has_started_path {
+                        svg.push_str(r#" <path d=""#);
+                        has_started_path = true;
+                    }
+                    if let Some(&start) = piece.first() {
+                        let _ = write!(svg, " M {},{}", start.0, start.1);
+                        for point in piece.iter().skip(1) {
+                            let _ = write!(svg, " L {},{}", point.0, point.1);
+                        }
+                        svg.push_str(" Z");
+                    }
                 }
             }
-            svg.push_str(&format!(
-                r#"" style="fill:rgb({},{},{}); fill-opacity:{}; stroke:none;" />"#,
-                color[0],
-                color[1],
-                color[2],
-                color[3] as f32 / 255.0
-            ));
+
+            if has_started_path {
+                let _ = write!(
+                    svg,
+                    r#"" style="fill:rgb({},{},{}); fill-opacity:{}; stroke:none;" />"#,
+                    rgba[0], rgba[1], rgba[2], opacity
+                );
+            }
         }
     }
 
@@ -145,59 +212,4 @@ fn svg_header(width: u32, height: u32) -> String {
 "#,
         width, height
     )
-}
-
-/// Joins individual edges into a continuous path of points.
-/// 
-/// This is a helper for the vectorization process that traces the outline
-/// of a shape from a set of edges.
-fn joined_edges(assorted_edges: &HashSet<Edge>, keep_every_point: bool) -> Vec<Vec<Point>> {
-    let mut pieces = Vec::new();
-    let mut assorted_edges = assorted_edges.clone();
-    let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
-
-    while !assorted_edges.is_empty() {
-        let mut piece = Vec::new();
-        let first_edge = assorted_edges.iter().next().unwrap().clone();
-        assorted_edges.remove(&first_edge);
-        piece.push(first_edge.0);
-        piece.push(first_edge.1);
-
-        loop {
-            let last_point = *piece.last().unwrap();
-            let mut found = false;
-
-            for &direction in &directions {
-                let next_point = (last_point.0 + direction.0, last_point.1 + direction.1);
-                let next_edge = (last_point, next_point);
-
-                if assorted_edges.contains(&next_edge) {
-                    assorted_edges.remove(&next_edge);
-                    if !keep_every_point && piece.len() >= 2 {
-                        let prev_direction = (
-                            piece[piece.len() - 1].0 - piece[piece.len() - 2].0,
-                            piece[piece.len() - 1].1 - piece[piece.len() - 2].1,
-                        );
-                        if prev_direction == direction {
-                            piece.pop();
-                        }
-                    }
-                    piece.push(next_point);
-                    found = true;
-                    break;
-                }
-            }
-
-            if !found || piece.first() == piece.last() {
-                break;
-            }
-        }
-
-        if piece.first() == piece.last() {
-            piece.pop();
-        }
-        pieces.push(piece);
-    }
-
-    pieces
 }
