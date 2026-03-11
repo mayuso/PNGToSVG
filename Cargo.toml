@@ -1,7 +1,7 @@
 [package]
 name = "pngtosvg"
-version = "0.5.1"
-edition = "2021"
+version = "0.6.0"
+edition = "2024"
 description = "A CLI tool and library to convert PNG images into SVG vectors."
 license = "MIT"
 repository = "https://github.com/mayuso/PNGToSVG"
