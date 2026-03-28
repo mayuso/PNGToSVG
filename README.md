@@ -55,4 +55,3 @@ fn main() {
 ```
 
 For advanced features, including in-memory `RgbaImage` conversions, please read the **[official documentation on docs.rs](https://docs.rs/pngtosvg)**.
-```
