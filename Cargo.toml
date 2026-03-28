@@ -21,3 +21,6 @@ path = "src/main.rs"
 image = "0.25.2"
 rayon = "1.10.0"
 clap = { version = "4.5", features = ["derive"] }
+
+[build-dependencies]
+winres = "0.1"
