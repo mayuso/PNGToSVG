@@ -17,7 +17,7 @@ struct Cli {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    let input_path = &args.input;
+    let input_path = args.input;
 
     if !input_path.exists() {
         eprintln!("Error: Path does not exist: {}", input_path.display());
@@ -29,10 +29,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("Error: The provided file is not a PNG.");
             process::exit(1);
         }
-        vec![input_path.to_path_buf()]
+        vec![input_path]
     } else if input_path.is_dir() {
         println!("Processing directory: {}", input_path.display());
-        fs::read_dir(input_path)?
+        fs::read_dir(&input_path)?
             .filter_map(Result::ok)
             .map(|entry| entry.path())
             .filter(|path| {

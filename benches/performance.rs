@@ -6,7 +6,7 @@ fn convert_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("svg_conversion");
     group.sample_size(100);
 
-    let img_path = PathBuf::from("tests/fixtures/images/Blue_Marble_2002_3840_1920.png");
+    let img_path = PathBuf::from("tests/fixtures/images/PNG_transparency_demonstration_800_600.png");
 
     let img = image::open(&img_path).unwrap().to_rgba8();
 

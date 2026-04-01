@@ -11,7 +11,7 @@ use image::RgbaImage;
 ///
 /// * `Result<String, Box<dyn std::error::Error>>` - The SVG string on success, or an error on failure.
 pub fn convert_file_to_svg(path: &std::path::Path) -> Result<String, Box<dyn std::error::Error>> {
-    let img = image::open(path)?.to_rgba8();
+    let img = image::open(path)?.into_rgba8();
     Ok(rgba_image_to_svg_contiguous(&img))
 }
 
@@ -61,8 +61,9 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                 continue;
             }
 
-            let rgba = get_rgba(x, y);
-            if rgba[3] == 0 {
+            let colors = get_rgba(x, y);
+            let [rgb @ .., a] = colors;
+            if a == 0 {
                 visited[idx] = true;
                 continue;
             }
@@ -86,7 +87,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                         let nx_u = nx as u32;
                         let ny_u = ny as u32;
 
-                        if get_rgba(nx_u, ny_u) == rgba {
+                        if get_rgba(nx_u, ny_u) == colors {
                             is_boundary = false;
                             let n_idx = (ny_u * width + nx_u) as usize;
                             if !visited[n_idx] {
@@ -116,7 +117,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             used.clear();
             used.resize(current_edges.len(), false);
 
-            let opacity = f32::from(rgba[3]) / 255.0;
+            let opacity = f32::from(a) / 255.0;
             let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
 
             let mut has_started_path = false;
@@ -185,10 +186,11 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             }
 
             if has_started_path {
+                let [r, g, b] = rgb;
                 let _ = write!(
                     svg,
                     r#"" style="fill:rgb({},{},{}); fill-opacity:{}; stroke:none;" />"#,
-                    rgba[0], rgba[1], rgba[2], opacity
+                    r, g, b, opacity
                 );
             }
         }
