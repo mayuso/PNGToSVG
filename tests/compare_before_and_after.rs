@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 #[test]
-fn run_before_and_after_tests() {
+fn run_compare_before_and_after_tests() {
     let images_dir = Path::new("tests/fixtures/images");
     let expected_dir = Path::new("tests/fixtures/expected");
 
