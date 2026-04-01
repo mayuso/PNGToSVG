@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Success: {:?}", output_path.file_name().unwrap_or_default());
                 }
             }
-            Err(e) => eprintln!("Failed to convert {:?}: {}", path, e),
+            Err(e) => eprintln!("Failed to convert {path:?}: {e}"),
         }
     });
 

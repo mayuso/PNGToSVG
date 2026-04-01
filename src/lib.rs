@@ -86,15 +86,15 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                         let nx_u = nx as u32;
                         let ny_u = ny as u32;
 
-                        if get_rgba(nx_u, ny_u) != rgba {
-                            is_boundary = true;
-                        } else {
+                        if get_rgba(nx_u, ny_u) == rgba {
                             is_boundary = false;
                             let n_idx = (ny_u * width + nx_u) as usize;
                             if !visited[n_idx] {
                                 visited[n_idx] = true;
                                 queue.push((nx, ny));
                             }
+                        } else {
+                            is_boundary = true;
                         }
                     }
 
@@ -116,7 +116,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             used.clear();
             used.resize(current_edges.len(), false);
 
-            let opacity = rgba[3] as f32 / 255.0;
+            let opacity = f32::from(rgba[3]) / 255.0;
             let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
 
             let mut has_started_path = false;
