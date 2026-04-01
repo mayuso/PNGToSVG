@@ -25,6 +25,14 @@ clap = { version = "4.6", features = ["derive"] }
 [build-dependencies]
 winres = "0.1"
 
+[dev-dependencies]
+criterion = "0.5"
+pretty_assertions = "1.4.0"
+
+[[bench]]
+name = "performance"
+harness = false
+
 [profile.release]
 lto = "fat"
 codegen-units = 1
