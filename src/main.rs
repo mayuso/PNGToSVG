@@ -35,7 +35,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fs::read_dir(input_path)?
             .filter_map(Result::ok)
             .map(|entry| entry.path())
-            .filter(|path| path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png"))
+            .filter(|path| {
+                path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("png")
+            })
             .collect()
     } else {
         Vec::new()
@@ -43,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     files_to_process.par_iter().for_each(|path| {
         let output_path = path.with_extension("svg");
-        
+
         println!("Converting {:?}...", path.file_name().unwrap_or_default());
 
         match convert_file_to_svg(path) {

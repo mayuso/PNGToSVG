@@ -31,15 +31,15 @@ pub fn convert_file_to_svg(path: &std::path::Path) -> Result<String, Box<dyn std
 pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
     let width = img.width();
     let height = img.height();
-    
+
     let raw = img.as_raw();
     let get_rgba = |x: u32, y: u32| -> [u8; 4] {
         let i = ((y * width + x) * 4) as usize;
-        [raw[i], raw[i+1], raw[i+2], raw[i+3]]
+        [raw[i], raw[i + 1], raw[i + 2], raw[i + 3]]
     };
 
     let mut visited = vec![false; (width * height) as usize];
-    
+
     let mut svg = String::with_capacity((width * height * 5) as usize);
     svg.push_str(&svg_header(width, height));
 
@@ -63,7 +63,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             if visited[idx] {
                 continue;
             }
-            
+
             let rgba = get_rgba(x, y);
             if rgba[3] == 0 {
                 visited[idx] = true;
@@ -80,15 +80,15 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                 for &(offset, (start_offset, end_offset)) in &edges_offsets {
                     let nx = here.0 + offset.0;
                     let ny = here.1 + offset.1;
-                    
+
                     let is_boundary;
-                    
+
                     if nx < 0 || nx >= width as i32 || ny < 0 || ny >= height as i32 {
                         is_boundary = true;
                     } else {
                         let nx_u = nx as u32;
                         let ny_u = ny as u32;
-                        
+
                         if get_rgba(nx_u, ny_u) != rgba {
                             is_boundary = true;
                         } else {
@@ -115,10 +115,10 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             }
 
             current_edges.sort_unstable();
-            
+
             used.clear();
             used.resize(current_edges.len(), false);
-            
+
             let opacity = rgba[3] as f32 / 255.0;
             let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
 
@@ -130,7 +130,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                 }
                 used[i] = true;
                 let first_edge = current_edges[i];
-                
+
                 piece.clear();
                 piece.push(first_edge.0);
                 piece.push(first_edge.1);
@@ -146,7 +146,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                         if let Ok(idx) = current_edges.binary_search(&next_edge) {
                             if !used[idx] {
                                 used[idx] = true;
-                                
+
                                 if piece.len() >= 2 {
                                     let prev_direction = (
                                         piece[piece.len() - 1].0 - piece[piece.len() - 2].0,
