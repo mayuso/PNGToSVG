@@ -12,9 +12,8 @@ fn run_before_and_after_tests() {
         return;
     }
 
-    let update = env::var("UPDATE_EXPECTED_AFTER_IMAGES")
-        .unwrap_or_else(|_| "0".to_string())
-        == "1";
+    let update =
+        env::var("UPDATE_EXPECTED_AFTER_IMAGES").unwrap_or_else(|_| "0".to_string()) == "1";
 
     let mut ran_test = false;
 
@@ -43,8 +42,8 @@ fn run_before_and_after_tests() {
                     );
                 }
 
-                let expected_svg = fs::read_to_string(&expected_path)
-                    .expect("Failed to read expected SVG file");
+                let expected_svg =
+                    fs::read_to_string(&expected_path).expect("Failed to read expected SVG file");
 
                 // Normalize line endings before compare if cross-platform
                 let expected_svg_normalized = expected_svg.replace("\r\n", "\n");
@@ -62,6 +61,8 @@ fn run_before_and_after_tests() {
     if ran_test {
         println!("Before and after comparison tests passing!");
     } else {
-        println!("No PNG files found in tests/fixtures/images/ to run before and after comparison tests.");
+        println!(
+            "No PNG files found in tests/fixtures/images/ to run before and after comparison tests."
+        );
     }
 }

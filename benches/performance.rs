@@ -1,6 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use std::path::PathBuf;
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use image::RgbaImage;
+use std::path::PathBuf;
 
 fn convert_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("svg_conversion");
