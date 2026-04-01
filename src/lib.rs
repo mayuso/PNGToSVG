@@ -1,7 +1,4 @@
-use image::{Rgba, RgbaImage};
-
-type Point = (i32, i32);
-type Edge = (Point, Point);
+use image::RgbaImage;
 
 /// Reads a file from `path`, converts it to an RGBA image, and then
 /// converts it to an SVG string using the `rgba_image_to_svg_contiguous` function.
@@ -143,23 +140,23 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                         let next_point = (last_point.0 + direction.0, last_point.1 + direction.1);
                         let next_edge = (last_point, next_point);
 
-                        if let Ok(idx) = current_edges.binary_search(&next_edge) {
-                            if !used[idx] {
-                                used[idx] = true;
+                        if let Ok(idx) = current_edges.binary_search(&next_edge)
+                            && !used[idx]
+                        {
+                            used[idx] = true;
 
-                                if piece.len() >= 2 {
-                                    let prev_direction = (
-                                        piece[piece.len() - 1].0 - piece[piece.len() - 2].0,
-                                        piece[piece.len() - 1].1 - piece[piece.len() - 2].1,
-                                    );
-                                    if prev_direction == direction {
-                                        piece.pop();
-                                    }
+                            if piece.len() >= 2 {
+                                let prev_direction = (
+                                    piece[piece.len() - 1].0 - piece[piece.len() - 2].0,
+                                    piece[piece.len() - 1].1 - piece[piece.len() - 2].1,
+                                );
+                                if prev_direction == direction {
+                                    piece.pop();
                                 }
-                                piece.push(next_point);
-                                found = true;
-                                break;
                             }
+                            piece.push(next_point);
+                            found = true;
+                            break;
                         }
                     }
 

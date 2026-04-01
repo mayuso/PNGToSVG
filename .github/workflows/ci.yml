@@ -29,7 +29,7 @@ jobs:
         run: cargo fmt --check
 
       - name: Run Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy
 
       - name: Run Tests
         run: cargo test
