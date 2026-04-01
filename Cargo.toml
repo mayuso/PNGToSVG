@@ -18,9 +18,9 @@ name = "pngtosvg"
 path = "src/main.rs"
 
 [dependencies]
-image = "0.25.2"
-rayon = "1.10.0"
-clap = { version = "4.5", features = ["derive"] }
+image = "0.25.10"
+rayon = "1.11.0"
+clap = { version = "4.6", features = ["derive"] }
 
 [build-dependencies]
 winres = "0.1"
