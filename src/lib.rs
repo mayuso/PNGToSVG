@@ -1,4 +1,5 @@
 use image::RgbaImage;
+use std::collections::BTreeMap;
 
 /// Reads a file from `path`, converts it to an RGBA image, and then
 /// converts it to an SVG string using the `rgba_image_to_svg_contiguous` function.
@@ -37,9 +38,6 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
 
     let mut visited = vec![false; (width * height) as usize];
 
-    let mut svg = String::with_capacity((width * height * 5) as usize);
-    svg.push_str(&svg_header(width, height));
-
     let edges_offsets = [
         ((-1, 0), ((0, 0), (0, 1))),
         ((0, 1), ((0, 1), (1, 1))),
@@ -53,6 +51,9 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
     let mut current_edges = Vec::new();
     let mut used = Vec::new();
     let mut piece = Vec::new();
+    // Subpath data accumulated per unique RGBA color. BTreeMap keeps emission
+    // order deterministic across runs so snapshot tests stay stable.
+    let mut paths_by_color: BTreeMap<[u8; 4], String> = BTreeMap::new();
 
     for y in 0..height {
         for x in 0..width {
@@ -62,8 +63,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             }
 
             let colors = get_rgba(x, y);
-            let [rgb @ .., a] = colors;
-            if a == 0 {
+            if colors[3] == 0 {
                 visited[idx] = true;
                 continue;
             }
@@ -107,7 +107,6 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                 }
             }
 
-            // Immediately convert current_edges to shapes and push to SVG
             if current_edges.is_empty() {
                 continue;
             }
@@ -117,10 +116,8 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             used.clear();
             used.resize(current_edges.len(), false);
 
-            let opacity = f32::from(a) / 255.0;
             let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
-
-            let mut has_started_path = false;
+            let buf = paths_by_color.entry(colors).or_default();
 
             for i in 0..current_edges.len() {
                 if used[i] {
@@ -170,29 +167,48 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                     piece.pop();
                 }
 
-                if !piece.is_empty() {
-                    if !has_started_path {
-                        svg.push_str(r#" <path d=""#);
-                        has_started_path = true;
-                    }
-                    if let Some(&start) = piece.first() {
-                        let _ = write!(svg, " M {},{}", start.0, start.1);
-                        for point in piece.iter().skip(1) {
-                            let _ = write!(svg, " L {},{}", point.0, point.1);
-                        }
-                        svg.push_str(" Z");
-                    }
+                if piece.is_empty() {
+                    continue;
                 }
-            }
 
-            if has_started_path {
-                let [r, g, b] = rgb;
-                let _ = write!(
-                    svg,
-                    r#"" style="fill:rgb({},{},{}); fill-opacity:{}; stroke:none;" />"#,
-                    r, g, b, opacity
-                );
+                let (sx, sy) = piece[0];
+                let _ = write!(buf, "M{},{}", sx, sy);
+                let mut prev = piece[0];
+                for &p in &piece[1..] {
+                    let dx = p.0 - prev.0;
+                    let dy = p.1 - prev.1;
+                    if dy == 0 {
+                        let _ = write!(buf, "h{}", dx);
+                    } else {
+                        let _ = write!(buf, "v{}", dy);
+                    }
+                    prev = p;
+                }
+                buf.push('Z');
             }
+        }
+    }
+
+    let mut svg = String::with_capacity((width * height * 3) as usize);
+    svg.push_str(&svg_header(width, height));
+
+    for (color, data) in &paths_by_color {
+        let [r, g, b, a] = *color;
+        if a == 255 {
+            let _ = write!(
+                svg,
+                r##"<path fill="#{:02x}{:02x}{:02x}" d="{}"/>"##,
+                r, g, b, data
+            );
+        } else {
+            // 3 decimals is the minimum precision for a byte-exact alpha round-trip
+            // (round(a/255 * 255) == a for all a in 1..=254).
+            let opacity = f32::from(a) / 255.0;
+            let _ = write!(
+                svg,
+                r##"<path fill="#{:02x}{:02x}{:02x}" fill-opacity="{:.3}" d="{}"/>"##,
+                r, g, b, opacity, data
+            );
         }
     }
 
