@@ -2,8 +2,8 @@ use std::fs;
 use std::path::Path;
 
 /// Rasterize each generated SVG with resvg and confirm the resulting pixels
-/// match the source PNG. The byte-level snapshot test in `compare_before_and_after.rs` 
-/// only catches "did the emitted SVG text change?" — this one catches 
+/// match the source PNG. The byte-level snapshot test in `compare_before_and_after.rs`
+/// only catches "did the emitted SVG text change?" — this one catches
 /// "are the SVG pixels still equal to the source?"
 ///
 /// Comparison is done in **premultiplied** RGBA, which is what's actually
