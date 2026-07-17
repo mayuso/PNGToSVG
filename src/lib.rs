@@ -14,6 +14,8 @@ pub fn convert_file_to_svg(path: &std::path::Path) -> Result<String, Box<dyn std
 
 /// Converts an [`RgbaImage`] to an SVG string by finding contiguous regions
 /// of identical RGBA color and emitting one compact SVG path per color.
+/// Translucent paths are grouped by alpha value under `<g fill-opacity>`
+/// elements so the opacity is written once per alpha instead of once per path.
 pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
     let width = img.width();
     let height = img.height();
@@ -39,9 +41,11 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
     let mut current_edges = Vec::new();
     let mut used = Vec::new();
     let mut piece = Vec::new();
-    // Subpath data accumulated per unique RGBA color. BTreeMap keeps emission
-    // order deterministic across runs so snapshot tests stay stable.
-    let mut paths_by_color: BTreeMap<[u8; 4], String> = BTreeMap::new();
+    // Subpath data accumulated per unique RGBA color, along with the start
+    // point of the last emitted subpath (so later subpaths can use a shorter
+    // relative moveto). BTreeMap keeps emission order deterministic across
+    // runs so snapshot tests stay stable.
+    let mut paths_by_color: BTreeMap<[u8; 4], (String, (i32, i32))> = BTreeMap::new();
 
     for y in 0..height {
         for x in 0..width {
@@ -105,7 +109,7 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
             used.resize(current_edges.len(), false);
 
             let directions = [(0, 1), (1, 0), (0, -1), (-1, 0)];
-            let buf = paths_by_color.entry(colors).or_default();
+            let (buf, last_start) = paths_by_color.entry(colors).or_default();
 
             for i in 0..current_edges.len() {
                 if used[i] {
@@ -160,7 +164,21 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                 }
 
                 let (sx, sy) = piece[0];
-                let _ = write!(buf, "M{},{}", sx, sy);
+                if buf.is_empty() {
+                    let _ = write!(buf, "M{},{}", sx, sy);
+                } else {
+                    // After `Z` the current point is the previous subpath's
+                    // start, so later subpaths can use a shorter relative
+                    // moveto. The comma is optional before a negative y.
+                    let dx = sx - last_start.0;
+                    let dy = sy - last_start.1;
+                    if dy < 0 {
+                        let _ = write!(buf, "m{}{}", dx, dy);
+                    } else {
+                        let _ = write!(buf, "m{},{}", dx, dy);
+                    }
+                }
+                *last_start = (sx, sy);
                 let mut prev = piece[0];
                 for &p in &piece[1..] {
                     let dx = p.0 - prev.0;
@@ -180,8 +198,13 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
     let mut svg = String::with_capacity((width * height * 3) as usize);
     svg.push_str(&svg_header(width, height));
 
-    for (color, data) in &paths_by_color {
-        let [r, g, b, a] = *color;
+    // Regions are geometrically disjoint, so paint order does not affect the
+    // rendered result: opaque paths are emitted directly, translucent ones are
+    // grouped by alpha so the opacity is written once per group.
+    let mut translucent_by_alpha: BTreeMap<u8, Vec<([u8; 4], String)>> = BTreeMap::new();
+
+    for (color, (data, _)) in paths_by_color {
+        let [r, g, b, a] = color;
         if a == 255 {
             let _ = write!(
                 svg,
@@ -189,29 +212,38 @@ pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
                 r, g, b, data
             );
         } else {
-            // 3 decimals is the minimum precision for a byte-exact alpha round-trip
-            // (round(a/255 * 255) == a for all a in 1..=254).
-            let opacity = f32::from(a) / 255.0;
+            translucent_by_alpha
+                .entry(a)
+                .or_default()
+                .push((color, data));
+        }
+    }
+
+    for (a, paths) in &translucent_by_alpha {
+        // 3 decimals is the minimum precision for a byte-exact alpha round-trip
+        // (round(a/255 * 255) == a for all a in 1..=254).
+        let opacity = f32::from(*a) / 255.0;
+        let _ = write!(svg, r##"<g fill-opacity="{:.3}">"##, opacity);
+        for ([r, g, b, _], data) in paths {
             let _ = write!(
                 svg,
-                r##"<path fill="#{:02x}{:02x}{:02x}" fill-opacity="{:.3}" d="{}"/>"##,
-                r, g, b, opacity, data
+                r##"<path fill="#{:02x}{:02x}{:02x}" d="{}"/>"##,
+                r, g, b, data
             );
         }
+        svg.push_str("</g>");
     }
 
     svg.push_str("</svg>\n");
     svg
 }
 
-/// Generates the standard SVG header.
+/// Generates the SVG opening tag. The XML declaration and DOCTYPE are
+/// intentionally omitted: the SVG WG discourages the DOCTYPE and no modern
+/// consumer needs either.
 fn svg_header(width: u32, height: u32) -> String {
     format!(
-        r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
-  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="{}" height="{}"
-     xmlns="http://www.w3.org/2000/svg" version="1.1">
+        r#"<svg width="{}" height="{}" xmlns="http://www.w3.org/2000/svg">
 "#,
         width, height
     )
