@@ -1,31 +1,19 @@
 use image::RgbaImage;
 use std::collections::BTreeMap;
 
-/// Reads a file from `path`, converts it to an RGBA image, and then
-/// converts it to an SVG string using the `rgba_image_to_svg_contiguous` function.
+/// Reads the image at `path` and converts it to an SVG string using
+/// [`rgba_image_to_svg_contiguous`].
 ///
-/// # Arguments
+/// # Errors
 ///
-/// * `path` - A path to the image file to convert.
-///
-/// # Returns
-///
-/// * `Result<String, Box<dyn std::error::Error>>` - The SVG string on success, or an error on failure.
+/// Returns an error if the file cannot be opened or decoded as an image.
 pub fn convert_file_to_svg(path: &std::path::Path) -> Result<String, Box<dyn std::error::Error>> {
     let img = image::open(path)?.into_rgba8();
     Ok(rgba_image_to_svg_contiguous(&img))
 }
 
-/// This function processes the image to find contiguous regions of the same color
-/// and generates SVG paths for them.
-///
-/// # Arguments
-///
-/// * `img` - A reference to an `RgbaImage` to convert.
-///
-/// # Returns
-///
-/// * `String` - A string containing the SVG representation of the image.
+/// Converts an [`RgbaImage`] to an SVG string by finding contiguous regions
+/// of identical RGBA color and emitting one compact SVG path per color.
 pub fn rgba_image_to_svg_contiguous(img: &RgbaImage) -> String {
     let width = img.width();
     let height = img.height();
