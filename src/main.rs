@@ -1,7 +1,6 @@
 use clap::Parser;
 use rayon::prelude::*;
-use std::fs::{self, File};
-use std::io::Write;
+use std::fs;
 use std::path::PathBuf;
 use std::process;
 
@@ -43,21 +42,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Vec::new()
     };
 
-    files_to_process.par_iter().for_each(|path| {
-        let output_path = path.with_extension("svg");
+    let failures = files_to_process
+        .par_iter()
+        .filter(|path| {
+            let output_path = path.with_extension("svg");
 
-        println!("Converting {:?}...", path.file_name().unwrap_or_default());
+            println!("Converting {:?}...", path.file_name().unwrap_or_default());
 
-        match convert_file_to_svg(path) {
-            Ok(svg_content) => {
-                if let Ok(mut file) = File::create(&output_path) {
-                    let _ = file.write_all(svg_content.as_bytes());
-                    println!("Success: {:?}", output_path.file_name().unwrap_or_default());
+            match convert_file_to_svg(path) {
+                Ok(svg_content) => match fs::write(&output_path, svg_content) {
+                    Ok(()) => {
+                        println!("Success: {:?}", output_path.file_name().unwrap_or_default());
+                        false
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to write {output_path:?}: {e}");
+                        true
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Failed to convert {path:?}: {e}");
+                    true
                 }
             }
-            Err(e) => eprintln!("Failed to convert {path:?}: {e}"),
-        }
-    });
+        })
+        .count();
+
+    if failures > 0 {
+        eprintln!(
+            "{failures} of {} file(s) failed to convert.",
+            files_to_process.len()
+        );
+        process::exit(1);
+    }
 
     Ok(())
 }
