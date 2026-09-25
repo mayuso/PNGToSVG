@@ -1,5 +1,4 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use image::RgbaImage;
 use std::path::PathBuf;
 
 fn convert_benchmark(c: &mut Criterion) {
