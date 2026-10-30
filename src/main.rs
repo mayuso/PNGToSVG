@@ -1,10 +1,11 @@
 use clap::Parser;
 use rayon::prelude::*;
 use std::fs;
+use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::process;
 
-use pngtosvg::convert_file_to_svg;
+use pngtosvg::{convert_file_to_svg, convert_png_bytes_to_svg};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -17,6 +18,21 @@ struct Cli {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
     let input_path = args.input;
+
+    if input_path.as_os_str() == "-" {
+        let mut png_bytes = Vec::new();
+        io::stdin().read_to_end(&mut png_bytes)?;
+        match convert_png_bytes_to_svg(&png_bytes) {
+            Ok(svg) => {
+                io::stdout().write_all(svg.as_bytes())?;
+                return Ok(());
+            }
+            Err(e) => {
+                eprintln!("Failed to convert stdin: {e}");
+                process::exit(1);
+            }
+        }
+    }
 
     if !input_path.exists() {
         eprintln!("Error: Path does not exist: {}", input_path.display());
