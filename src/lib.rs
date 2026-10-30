@@ -12,6 +12,17 @@ pub fn convert_file_to_svg(path: &std::path::Path) -> Result<String, Box<dyn std
     Ok(rgba_image_to_svg_contiguous(&img))
 }
 
+/// Decodes PNG bytes and converts the image to an SVG string using
+/// [`rgba_image_to_svg_contiguous`].
+///
+/// # Errors
+///
+/// Returns an error if the bytes cannot be decoded as a PNG image.
+pub fn convert_png_bytes_to_svg(data: &[u8]) -> Result<String, Box<dyn std::error::Error>> {
+    let img = image::load_from_memory(data)?.into_rgba8();
+    Ok(rgba_image_to_svg_contiguous(&img))
+}
+
 /// Converts an [`RgbaImage`] to an SVG string by finding contiguous regions
 /// of identical RGBA color and emitting one compact SVG path per color.
 /// Translucent paths are grouped by alpha value under `<g fill-opacity>`
