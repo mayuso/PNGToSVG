@@ -23,7 +23,16 @@ cargo install pngtosvg
 pngtosvg image.png         # Convert a single file
 pngtosvg ./assets/icons/   # Convert a specific folder
 pngtosvg .                 # Convert the current directory
+
+pngtosvg image.png > out.svg          # Redirected stdout: SVG is written there
+cat image.png | pngtosvg - > out.svg  # Read PNG from stdin, SVG to stdout
+pngtosvg image.png -o out.svg         # Write to a specific file (works in any shell)
+pngtosvg image.png -o -               # Explicitly write to stdout
 ```
+When stdout is a terminal, `image.svg` is written next to `image.png`. When stdout is redirected or piped, a single file's SVG goes to stdout instead and no file is created. `-o` works with a single file or stdin, not directories. Directories always write files.
+
+*(Windows PowerShell 5.1 re-encodes `>` output as UTF-16, which corrupts the SVG. Use `-o out.svg` instead, or `cmd`, PowerShell 7+, or Git Bash.)*
+
 *(Note for Linux/macOS: If not in your `PATH`, prefix the executable with `./`)*
 
 ### Windows Desktop GUI
